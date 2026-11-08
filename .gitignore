@@ -1,5 +1,10 @@
-.venv
+.venv/
 dist/
 __pycache__/
-*.egg-info
+*.egg-info/
 .idea/
+.ruff_cache/
+db_meta.json
+data/
+*.cast
+/main.py
