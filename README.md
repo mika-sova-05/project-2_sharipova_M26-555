@@ -45,6 +45,7 @@ uv run database
 | `list_tables` | Показать список таблиц |
 | `drop_table <имя>` | Удалить таблицу |
 | `info <имя>` | Показать информацию о таблице |
+| `update <имя> set <столбец> = <значение> where <условие>` | Обновить записи в таблице |
 
 Поддерживаемые типы данных: `int`, `str`, `bool`.
 
@@ -113,11 +114,11 @@ delete from users where name = "Anna"
 
 ## Демонстрация работы
 
-### Часть 2
+### Часть 2. База данных
 
 [![asciicast](https://asciinema.org/a/xPsTYEVf7NL4p2Hx.svg)](https://asciinema.org/a/xPsTYEVf7NL4p2Hx)
 
-### Часть 3
+### Часть 3. Адаптируем БД
 
 [![asciicast](https://asciinema.org/a/x92kJFOW2Fym6sG3.svg)](https://asciinema.org/a/x92kJFOW2Fym6sG3)
 
