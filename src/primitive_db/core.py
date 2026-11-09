@@ -1,7 +1,16 @@
+from primitive_db.decorators import (
+    confirm_action,
+    create_cacher,
+    handle_db_errors,
+    log_time,
+)
+
+cache_result = create_cacher()
+
 # Поддерживаемые типы данных
 SUPPORTED_TYPES = {"int", "str", "bool"}
 
-
+@handle_db_errors
 def create_table(metadata, table_name, columns):
     """Создаёт таблицу и добавляет её структуру в метаданные."""
 
@@ -38,7 +47,8 @@ def create_table(metadata, table_name, columns):
 
     return metadata
 
-
+@handle_db_errors
+@confirm_action("удаление таблицы")
 def drop_table(metadata, table_name):
     """Удаляет таблицу из метаданных."""
 
@@ -48,6 +58,7 @@ def drop_table(metadata, table_name):
         return metadata
 
     # Удаляем таблицу
+    metadata = metadata.copy()
     del metadata[table_name]
 
     print(f'Таблица "{table_name}" успешно удалена.')
@@ -67,7 +78,8 @@ def list_tables(metadata):
     for table_name in metadata:
         print(f"- {table_name}")
 
-
+@log_time
+@handle_db_errors
 def insert(metadata, table_name, values, table_data):
     """Добавляет новую запись в таблицу."""
 
@@ -112,20 +124,27 @@ def insert(metadata, table_name, values, table_data):
 
     return table_data
 
-
+@log_time
+@handle_db_errors
 def select(table_data, where_clause=None):
-    """Возвращает все записи или записи по условию."""
+    cache_key = (
+        tuple(tuple(sorted(row.items())) for row in table_data),
+        tuple(sorted(where_clause.items())) if where_clause else None,
+    )
 
-    if where_clause is None:
-        return table_data
+    def get_result():
+        if where_clause is None:
+            return table_data
 
-    return [
-        row
-        for row in table_data
-        if all(row.get(key) == value for key, value in where_clause.items())
-    ]
+        return [
+            row
+            for row in table_data
+            if all(row.get(key) == value for key, value in where_clause.items())
+        ]
 
+    return cache_result(cache_key, get_result)
 
+@handle_db_errors
 def update(table_data, set_clause, where_clause):
     """Обновляет записи по заданному условию."""
 
@@ -135,7 +154,8 @@ def update(table_data, set_clause, where_clause):
 
     return table_data
 
-
+@handle_db_errors
+@confirm_action("удаление записей")
 def delete(table_data, where_clause):
     """Удаляет записи по заданному условию."""
 
@@ -147,7 +167,7 @@ def delete(table_data, where_clause):
 
     return remaining_data
 
-
+@handle_db_errors
 def info(metadata, table_name, table_data):
     """Выводит информацию о таблице."""
 

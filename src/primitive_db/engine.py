@@ -1,3 +1,4 @@
+
 import csv
 import re
 import shlex
@@ -29,7 +30,6 @@ DB_FILE = "db_meta.json"
 
 def print_help():
     """Выводит справочную информацию о командах базы данных."""
-
     print("\n***Процесс работы с таблицей***")
     print("Функции:")
     print(
@@ -52,7 +52,8 @@ def print_help():
         "where столбец = значение - обновить запись"
     )
     print(
-        "<command> delete from <имя_таблицы> where столбец = значение - удалить запись"
+        "<command> delete from <имя_таблицы> "
+        "where столбец = значение - удалить запись"
     )
     print("\nОбщие команды:")
     print("<command> exit - выход из программы")
@@ -61,7 +62,6 @@ def print_help():
 
 def parse_insert_values(values_string):
     """Разбирает значения для команды insert."""
-
     values = next(csv.reader([values_string], skipinitialspace=True))
 
     return [parse_value(value) for value in values]
@@ -69,14 +69,13 @@ def parse_insert_values(values_string):
 
 def run():
     """Запускает интерактивную работу с базой данных."""
-
     print("***База данных***")
     print_help()
 
-    while True:
-        # Загружаем актуальные метаданные
-        metadata = load_metadata(DB_FILE)
+    # Загружаем метаданные один раз перед циклом
+    metadata = load_metadata(DB_FILE)
 
+    while True:
         # Получаем команду пользователя
         user_input = prompt.string("Введите команду: ")
 
@@ -103,7 +102,10 @@ def run():
 
         elif command == "list_tables":
             if len(args) != 1:
-                print(f"Некорректное значение: {' '.join(args[1:])}. Попробуйте снова.")
+                print(
+                    f"Некорректное значение: {' '.join(args[1:])}. "
+                    "Попробуйте снова."
+                )
                 continue
 
             list_tables(metadata)
@@ -134,10 +136,18 @@ def run():
             table_data = load_table_data(table_name)
             old_length = len(table_data)
 
-            table_data = insert(metadata, table_name, values, table_data)
+            updated_data = insert(
+                metadata,
+                table_name,
+                values,
+                table_data,
+            )
 
-            if len(table_data) > old_length:
-                save_table_data(table_name, table_data)
+            if updated_data is None:
+                continue
+
+            if len(updated_data) > old_length:
+                save_table_data(table_name, updated_data)
 
         elif command == "select":
             match = re.fullmatch(
@@ -155,10 +165,15 @@ def run():
                 print(f'Ошибка: Таблица "{table_name}" не существует.')
                 continue
 
-            where_clause = parse_condition(match.group(2)) if match.group(2) else None
+            where_clause = (
+                parse_condition(match.group(2)) if match.group(2) else None
+            )
 
             table_data = load_table_data(table_name)
             selected_data = select(table_data, where_clause)
+
+            if selected_data is None:
+                continue
 
             table = PrettyTable()
             table.field_names = list(metadata[table_name].keys())
@@ -188,13 +203,15 @@ def run():
             where_clause = parse_condition(match.group(3))
 
             table_data = load_table_data(table_name)
-
             old_data = [row.copy() for row in table_data]
 
-            table_data = update(table_data, set_clause, where_clause)
+            updated_data = update(table_data, set_clause, where_clause)
 
-            if table_data != old_data:
-                save_table_data(table_name, table_data)
+            if updated_data is None:
+                continue
+
+            if updated_data != old_data:
+                save_table_data(table_name, updated_data)
                 print(f'Таблица "{table_name}" успешно обновлена.')
             else:
                 print("Записи для обновления не найдены.")
@@ -220,10 +237,13 @@ def run():
             table_data = load_table_data(table_name)
             old_data = [row.copy() for row in table_data]
 
-            table_data = delete(table_data, where_clause)
+            updated_data = delete(table_data, where_clause)
 
-            if table_data != old_data:
-                save_table_data(table_name, table_data)
+            if updated_data is None:
+                continue
+
+            if updated_data != old_data:
+                save_table_data(table_name, updated_data)
                 print(f'Записи из таблицы "{table_name}" успешно удалены.')
             else:
                 print("Записи для удаления не найдены.")
@@ -231,7 +251,8 @@ def run():
         elif command == "create_table":
             if len(args) < 3:
                 print(
-                    "Некорректное значение: недостаточно аргументов. Попробуйте снова."
+                    "Некорректное значение: недостаточно аргументов. "
+                    "Попробуйте снова."
                 )
                 continue
 
@@ -253,7 +274,17 @@ def run():
                 columns.append((column_name, column_type))
             else:
                 old_metadata = metadata.copy()
-                metadata = create_table(metadata, table_name, columns)
+
+                updated_metadata = create_table(
+                    metadata,
+                    table_name,
+                    columns,
+                )
+
+                if updated_metadata is None:
+                    continue
+
+                metadata = updated_metadata
 
                 if metadata != old_metadata:
                     save_metadata(DB_FILE, metadata)
@@ -266,10 +297,13 @@ def run():
                 )
                 continue
 
-            old_metadata = metadata.copy()
-            metadata = drop_table(metadata, args[1])
+            updated_metadata = drop_table(metadata, args[1])
 
-            if metadata != old_metadata:
+            if updated_metadata is None:
+                continue
+
+            if updated_metadata != metadata:
+                metadata = updated_metadata
                 save_metadata(DB_FILE, metadata)
 
         else:
